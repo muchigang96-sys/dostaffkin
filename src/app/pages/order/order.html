@@ -1,0 +1,147 @@
+<div id="map"></div>
+
+<app-header />
+
+<aside class="main" id="sidebar">
+    <div class="main-header">
+        <div class="main-title">Оформление доставки</div>
+        <div class="main-text">
+            Выберите параметры для расчета отправления
+        </div>
+    </div>
+
+    <div class="main-content" [formGroup]="routeForm">
+        <div class="main-route" [formGroup]="routeForm">
+            <div class="main-block-title">Маршрут</div>
+
+            <div class="main-fields">
+                <div class="main-field" id="fromField">
+                    <div class="main-pin"></div>
+
+                    <input id="from" formControlName="from" placeholder="Откуда: начните вводить адрес"
+                        autocomplete="off" />
+
+                    <div class="main-ac" id="fromAc" role="listbox" aria-label="Подсказки адресов"></div>
+                </div>
+
+                <div class="main-field" id="toField">
+                    <div class="main-pin"></div>
+
+                    <input id="to" formControlName="to" placeholder="Куда: начните вводить адрес" autocomplete="off" />
+
+                    <div class="main-ac" id="toAc" role="listbox" aria-label="Подсказки адресов"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-package">
+            <div class="main-block-title">Размер посылки</div>
+
+            <div class="main-sizes">
+                @for (size of sizes; track size.value) {
+                <div class="main-size-card" [class.is-active]="routeForm.value.size === size.value"
+                    (click)="selectSize(size.value)">
+                    <div class="main-size-top">
+                        <div class="main-size-label">
+                            {{ size.value | uppercase }}
+                        </div>
+
+                        <div class="main-size-rate">
+                            {{ size.rate }} ₽/км
+                        </div>
+                    </div>
+
+                    <div class="main-size-media" [class.main-size-media-palleta]="size.value === 'max'">
+                        <img [src]="'images/sizes/' + size.value + '.png'" [alt]="size.value" />
+                    </div>
+
+                    <div class="main-size-description" [innerHTML]="size.description"></div>
+                </div>
+                }
+            </div>
+        </div>
+
+        <fieldset class="main-speed">
+            <legend class="main-block-title">
+                Скорость доставки
+            </legend>
+
+            <div class="main-speed-options">
+                @for (speed of speeds; track speed.value) {
+                <button type="button" class="main-speed-card"
+                    [attr.aria-pressed]="routeForm.value.speed === speed.value"
+                    [class.is-active]="routeForm.value.speed === speed.value" (click)="selectSpeed(speed.value)">
+                    <img class="main-speed-media" [src]="'images/icons/' + speed.value + '.svg'" [alt]="speed.label" />
+
+                    <div class="main-speed-description">
+                        {{ speed.label }}
+                    </div>
+                </button>
+                }
+            </div>
+        </fieldset>
+        @if (routeForm.value.speed === 'fast') {<p class="toll-demo-note">Приоритетная: расчётный срок на 30% меньше
+            обычного. Доплата за дорогу — фиксированные 2 278 ₽ для участка ПК-5 — М-10 (1-я категория ТС), без проверки
+            платных участков выбранного маршрута.</p>}
+
+        <div class="main-calculate-block">
+            <button id="calc" class="button calculate-button" type="button"
+                [disabled]="routeForm.invalid || calculating() || !mapReady()" (click)="calculateRoute()">{{
+                calculating() ? "Считаем маршрут…" : "Рассчитать" }}</button>
+        </div>
+
+        <p class="calculation-error" role="alert">{{ calculationError() }}</p>
+        <div class="main-result" id="result" [style.display]="calculationResult() ? 'block' : 'none'"
+            aria-live="polite">
+            @if (calculationResult(); as result) {
+            <div class="main-result-title">Расчёт вашего заказа</div>
+            <div class="main-result-lines">
+                <div class="main-result-line"><span>Расстояние</span><span id="distanceValue">{{
+                        distanceText(result.distance) }}</span></div>
+                <div class="main-result-line"><span>Срок доставки{{ routeForm.value.speed === 'fast' ? ' · Приоритетная'
+                        : '' }}</span><span id="durationValue">{{ durationText(result.deliveryDuration) }}</span></div>
+                <div class="main-result-line"><span>Время маршрута Яндекса</span><span>{{ durationText(result.duration)
+                        }}</span></div>
+                <div class="main-result-line"><span>Тариф</span><span id="rateValue">{{ result.rate }} ₽/км</span></div>
+                <div class="main-result-line"><span>Доставка</span><span>{{ money(result.basePrice) }}</span></div>
+                @if (routeForm.value.speed === 'fast') {<div class="main-result-line"><span>Платная
+                        дорога</span><span>{{ money(result.tollPrice) }}</span></div>}
+            </div>
+            <div class="main-price">
+                <div class="main-price-label">Итого</div>
+                <div class="main-price-value" id="totalValue">{{ money(result.total) }}</div>
+            </div>
+            }
+        </div>
+
+        <div class="main-order-box">
+          @if (orderId() === null) {
+            <form class="main-order-form" id="orderForm" [formGroup]="orderForm" (ngSubmit)="submitOrder()" novalidate>
+              <div class="main-order-title">Оформление доставки</div>
+              <div class="main-block-info-row">
+                <div class="main-block-title">Контакты</div>
+                <div class="order-fields">
+                  <div class="main-field"><input id="customerName" formControlName="name" placeholder="Ваше имя" autocomplete="name" /></div>
+                  <div class="main-field"><input id="customerPhone" formControlName="phone" type="tel" placeholder="Ваш телефон" autocomplete="tel" inputmode="tel" /></div>
+                </div>
+              </div>
+              <div class="main-block-info-row extra-info">
+                <div class="main-block-title">Дополнительная информация</div>
+                <div class="main-field textarea"><textarea id="comment" formControlName="comment" placeholder="Детали доставки и комментарии"></textarea></div>
+              </div>
+              @if (!calculationResult()) {
+                <p class="order-form-hint">Чтобы отправить заявку, сначала рассчитайте доставку.</p>
+              }
+              <button id="submit" class="button main-submit-request" type="submit" [disabled]="!calculationResult() || orderForm.invalid">Отправить заявку</button>
+            </form>
+          } @else {
+            <div class="main-order-success" id="orderSuccess" role="status" aria-live="polite">
+              <div class="main-success-icon" aria-hidden="true">✓</div>
+              <div class="main-success-title">Заявка отправлена!</div>
+              <div class="main-success-title">Номер отправления — <span id="orderId">{{ orderId() }}</span></div>
+              <div class="main-success-subtitle">Мы скоро свяжемся с вами</div>
+            </div>
+          }
+        </div>
+      </div>
+</aside>
