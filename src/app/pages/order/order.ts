@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Subscription } from 'rxjs';
 import { Header } from '../../header/header';
 import { DELIVERY_SIZES, DELIVERY_SPEEDS } from './order.config';
+import { DeliveryApi } from '../../services/delivery-api';
 
 declare const ymaps: any;
 
@@ -40,11 +41,11 @@ export class Order implements OnInit, OnDestroy {
   private destroyed = false;
   public orderId = signal<number | null>(null);
   public calculationResult = signal<Calculation | null>(null);
-  public calculating = signal(false);
+  public readonly calculating = signal(false);
   public mapReady = signal(false);
   public calculationError = signal('');
 
-  constructor(private formBuilder: FormBuilder) {
+  constructor(private formBuilder: FormBuilder, private deliveryApi: DeliveryApi) {
     this.routeForm = this.formBuilder.group({
       from: ['', [Validators.required, Validators.pattern(/\S/)]],
       to: ['', [Validators.required, Validators.pattern(/\S/)]],
@@ -132,7 +133,10 @@ export class Order implements OnInit, OnDestroy {
           }, { boundsAutoApply: true, zoomMargin: 40 });
           this.mapRoute = multiRoute;
           multiRoute.model.events.add('requestsuccess', () => resolve(multiRoute));
-          multiRoute.model.events.add('requestfail', (event: any) => reject(event.get('error')));
+          multiRoute.model.events.add('requestfail', (event: any) => {
+          const routeError = typeof event?.get === 'function' ? event.get('error') : null;
+          reject(routeError ?? new Error('Не удалось получить маршрут от Яндекс Карт'));
+        });
           this.map.geoObjects.add(multiRoute);
         }),
         new Promise((_, reject) => {
@@ -221,11 +225,22 @@ export class Order implements OnInit, OnDestroy {
 
     const payload = {
       customer: { name: trimmedName, phone: trimmedPhone, comment: trimmedComment },
-      calculation: calculation,
+      calculation: {
+        ...calculation,
+        from: String(this.routeForm.getRawValue().from ?? '').trim(),
+        to: String(this.routeForm.getRawValue().to ?? '').trim()
+      },
       createdAt: new Date().toISOString()
     };
 
-    console.log(payload);
-    this.orderId.set(1);
+    this.deliveryApi.createDelivery(payload).subscribe((response) => {
+      if ('error' in response) {
+        alert(response.error);
+        return;
+      }
+
+      this.orderId.set(response.id);
+    });
+
   }
 }

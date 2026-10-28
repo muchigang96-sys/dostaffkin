@@ -434,3 +434,41 @@
 .main-order-success[role="status"] .main-success-title { margin: 0; color: #111; font-size: 14px; font-weight: 700; line-height: 1.4; }
 .main-order-success[role="status"] .main-success-subtitle { margin: 0; color: #777; font-size: 12px; font-weight: 400; line-height: 1.5; }
 .order-form-hint { margin: 0 0 12px; color: #777; font-size: 12px; line-height: 1.5; }
+
+/* Индикатор расчёта внутри сайдбара */
+.main-calculation-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #7c4a16;
+  font-size: 14px;
+  text-align: center;
+  padding: 24px;
+}
+.main-calculation-spinner {
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
+  border: 5px solid #ffe3c2;
+  border-top-color: #f7941d;
+  border-right-color: #f7941d;
+  border-radius: 50%;
+  animation: order-calculation-spin 0.8s linear infinite;
+}
+@keyframes order-calculation-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .main-calculation-spinner { animation-duration: 2s; }
+}
+
+/* Сообщение об ошибке остаётся под своим контактным полем. */
+.order-fields { align-items: start; }
+.order-contact-column { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.order-contact-column .input-error { display: block; margin: 0; line-height: 1.35; }

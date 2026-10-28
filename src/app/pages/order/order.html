@@ -2,7 +2,14 @@
 
 <app-header />
 
-<aside class="main" id="sidebar">
+<aside class="main" id="sidebar" [attr.aria-busy]="calculating()">
+    @if (calculating()) {
+        <div class="main-calculation-loader" role="status" aria-live="polite">
+            <span class="main-calculation-spinner" aria-hidden="true"></span>
+            <span>Рассчитываем доставку…</span>
+        </div>
+    }
+
     <div class="main-header">
         <div class="main-title">Оформление доставки</div>
         <div class="main-text">
@@ -18,23 +25,33 @@
                 <div class="main-field" id="fromField">
                     <div class="main-pin"></div>
 
-                    <input id="from" formControlName="from" placeholder="Откуда: начните вводить адрес"
-                        autocomplete="off" />
+                    <input id="from" formControlName="from" [attr.disabled]="orderId() !== null ? '' : null"
+                        placeholder="Откуда: начните вводить адрес" autocomplete="off" />
 
                     <div class="main-ac" id="fromAc" role="listbox" aria-label="Подсказки адресов"></div>
                 </div>
+                @if (this.routeForm.get('from')?.invalid && (this.routeForm.get('from')?.dirty ||
+                this.routeForm.get('from')?.touched)) {
+                <label for="from" class="input-error">Заполните поле Откуда</label>
+                }
 
                 <div class="main-field" id="toField">
                     <div class="main-pin"></div>
 
-                    <input id="to" formControlName="to" placeholder="Куда: начните вводить адрес" autocomplete="off" />
+                    <input id="to" formControlName="to" [attr.disabled]="orderId() !== null ? '' : null"
+                        placeholder="Куда: начните вводить адрес" autocomplete="off" />
 
                     <div class="main-ac" id="toAc" role="listbox" aria-label="Подсказки адресов"></div>
                 </div>
+                @if (this.routeForm.get('to')?.invalid && (this.routeForm.get('to')?.dirty ||
+                this.routeForm.get('to')?.touched)) {
+                <label for="from" class="input-error">Заполните поле Куда</label>
+                }
             </div>
         </div>
 
-        <div class="main-package">
+        <div class="main-package" [style.display]="orderId() !== null ? 'none' : null" (ngSubmit)="submitOrder()"
+            novalidate>
             <div class="main-block-title">Размер посылки</div>
 
             <div class="main-sizes">
@@ -61,7 +78,8 @@
             </div>
         </div>
 
-        <fieldset class="main-speed">
+        <fieldset class="main-speed" [style.display]="orderId() !== null ? 'none' : null" (ngSubmit)="submitOrder()"
+            novalidate>
             <legend class="main-block-title">
                 Скорость доставки
             </legend>
@@ -84,15 +102,16 @@
             обычного. Доплата за дорогу — фиксированные 2 278 ₽ для участка ПК-5 — М-10 (1-я категория ТС), без проверки
             платных участков выбранного маршрута.</p>}
 
-        <div class="main-calculate-block">
+        <div class="main-calculate-block" [style.display]="orderId() !== null ? 'none' : null"
+            (ngSubmit)="submitOrder()" novalidate>
             <button id="calc" class="button calculate-button" type="button"
                 [disabled]="routeForm.invalid || calculating() || !mapReady()" (click)="calculateRoute()">{{
                 calculating() ? "Считаем маршрут…" : "Рассчитать" }}</button>
         </div>
 
         <p class="calculation-error" role="alert">{{ calculationError() }}</p>
-        <div class="main-result" id="result" [style.display]="calculationResult() ? 'block' : 'none'"
-            aria-live="polite">
+        <div class="main-result" id="result"
+            [style.display]="calculationResult() ? 'block' : 'none'" aria-live="polite">
             @if (calculationResult(); as result) {
             <div class="main-result-title">Расчёт вашего заказа</div>
             <div class="main-result-lines">
@@ -100,8 +119,7 @@
                         distanceText(result.distance) }}</span></div>
                 <div class="main-result-line"><span>Срок доставки{{ routeForm.value.speed === 'fast' ? ' · Приоритетная'
                         : '' }}</span><span id="durationValue">{{ durationText(result.deliveryDuration) }}</span></div>
-                <div class="main-result-line"><span>Время маршрута Яндекса</span><span>{{ durationText(result.duration)
-                        }}</span></div>
+
                 <div class="main-result-line"><span>Тариф</span><span id="rateValue">{{ result.rate }} ₽/км</span></div>
                 <div class="main-result-line"><span>Доставка</span><span>{{ money(result.basePrice) }}</span></div>
                 @if (routeForm.value.speed === 'fast') {<div class="main-result-line"><span>Платная
@@ -115,33 +133,49 @@
         </div>
 
         <div class="main-order-box">
-          @if (orderId() === null) {
+            @if (orderId() === null) {
             <form class="main-order-form" id="orderForm" [formGroup]="orderForm" (ngSubmit)="submitOrder()" novalidate>
-              <div class="main-order-title">Оформление доставки</div>
-              <div class="main-block-info-row">
-                <div class="main-block-title">Контакты</div>
-                <div class="order-fields">
-                  <div class="main-field"><input id="customerName" formControlName="name" placeholder="Ваше имя" autocomplete="name" /></div>
-                  <div class="main-field"><input id="customerPhone" formControlName="phone" type="tel" placeholder="Ваш телефон" autocomplete="tel" inputmode="tel" /></div>
+                <div class="main-order-title">Оформление доставки</div>
+                <div class="main-block-info-row">
+                    <div class="main-block-title">Контакты</div>
+                    <div class="order-fields">
+                        <div class="order-contact-column">
+                            <div class="main-field">
+                                <input id="customerName" formControlName="name" placeholder="Ваше имя" autocomplete="name" aria-label="Ваше имя" />
+                            </div>
+                            @if (orderForm.get('name')?.invalid && (orderForm.get('name')?.dirty || orderForm.get('name')?.touched)) {
+                                <label for="customerName" class="input-error">Заполните имя</label>
+                            }
+                        </div>
+                        <div class="order-contact-column">
+                            <div class="main-field">
+                                <input id="customerPhone" formControlName="phone" type="tel" placeholder="Ваш телефон" autocomplete="tel" inputmode="tel" aria-label="Ваш телефон" />
+                            </div>
+                            @if (orderForm.get('phone')?.invalid && (orderForm.get('phone')?.dirty || orderForm.get('phone')?.touched)) {
+                                <label for="customerPhone" class="input-error">Заполните телефон</label>
+                            }
+                        </div>
+                    </div>
                 </div>
-              </div>
-              <div class="main-block-info-row extra-info">
-                <div class="main-block-title">Дополнительная информация</div>
-                <div class="main-field textarea"><textarea id="comment" formControlName="comment" placeholder="Детали доставки и комментарии"></textarea></div>
-              </div>
-              @if (!calculationResult()) {
+                <div class="main-block-info-row extra-info">
+                    <div class="main-block-title">Дополнительная информация</div>
+                    <div class="main-field textarea"><textarea id="comment" formControlName="comment"
+                            placeholder="Детали доставки и комментарии"></textarea></div>
+                </div>
+                @if (!calculationResult()) {
                 <p class="order-form-hint">Чтобы отправить заявку, сначала рассчитайте доставку.</p>
-              }
-              <button id="submit" class="button main-submit-request" type="submit" [disabled]="!calculationResult() || orderForm.invalid">Отправить заявку</button>
+                }
+                <button id="submit" class="button main-submit-request" type="submit"
+                    [disabled]="!calculationResult() || orderForm.invalid">Отправить заявку</button>
             </form>
-          } @else {
+            } @else {
             <div class="main-order-success" id="orderSuccess" role="status" aria-live="polite">
-              <div class="main-success-icon" aria-hidden="true">✓</div>
-              <div class="main-success-title">Заявка отправлена!</div>
-              <div class="main-success-title">Номер отправления — <span id="orderId">{{ orderId() }}</span></div>
-              <div class="main-success-subtitle">Мы скоро свяжемся с вами</div>
+                <div class="main-success-icon" aria-hidden="true">✓</div>
+                <div class="main-success-title">Заявка отправлена!</div>
+                <div class="main-success-title">Номер отправления — <span id="orderId">{{ orderId() }}</span></div>
+                <div class="main-success-subtitle">Мы скоро свяжемся с вами</div>
             </div>
-          }
+            }
         </div>
-      </div>
+    </div>
 </aside>
